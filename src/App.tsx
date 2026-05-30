@@ -15,6 +15,16 @@ import PointCloud from "./viz/PointCloud";
 
 const PLAY_YEARS_PER_SEC = 10;
 
+const VIEW_CAPTIONS: Record<LayoutKind, string> = {
+  spiral:
+    "Each loop is one year; the colored line spirals outward as months run warmer than the 1951–1980 average. Ed Hawkins' climate spiral.",
+  line: "Monthly temperature anomaly over time — the classic view of the warming trend.",
+  stripes:
+    "One stripe per month, blue (cooler) to red (warmer). Warming stripes, after Ed Hawkins.",
+  circle:
+    "A clock of months; each concentric ring is one year (1880 at the centre, today at the edge). The warming shows in the ring color — global anomalies have the seasonal cycle removed, so the month angle carries little signal.",
+};
+
 export default function App() {
   const [data, setData] = useState<ClimateData | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -146,6 +156,8 @@ export default function App() {
           tExtent={ext.t}
         />
       )}
+
+      {data && <p className="view-caption">{VIEW_CAPTIONS[layout]}</p>}
 
       <div className="stage" ref={stageRef}>
         {ready && (

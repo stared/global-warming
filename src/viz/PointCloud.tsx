@@ -14,14 +14,13 @@ interface Props {
 }
 
 /**
- * Renders one <rect> per monthly datum plus a single connecting <path> through
- * the revealed points. React owns the DOM structure (rects keyed by a
- * source-independent id); D3 owns the *transitions*.
+ * Renders one <rect> per monthly datum plus one <line> per consecutive pair
+ * (the connecting line, colored by temperature like Ed Hawkins' spiral).
  *
- * The connecting line is morphed in the SAME transition as the points: because
- * it always strings together the same revealed point centers, the source and
- * target path have an identical vertex count, so `interpolateString` bends every
- * vertex smoothly instead of the path snapping/crossfading between layouts.
+ * React owns the DOM structure (rects + segments, keyed by source-independent
+ * ids); D3 owns the *transitions*. Each segment's endpoints follow the very
+ * same point centers the rects use, so the colored line bends smoothly in lock
+ * step with the points on every layout change — no snapping, no crossfade.
  */
 export default function PointCloud({
   points,
@@ -32,8 +31,8 @@ export default function PointCloud({
   revealT,
   onHover,
 }: Props) {
-  const gRef = useRef<SVGGElement>(null);
-  const pathRef = useRef<SVGPathElement>(null);
+  const dotsRef = useRef<SVGGElement>(null);
+  const segsRef = useRef<SVGGElement>(null);
   const prev = useRef<{ layout: LayoutKind; dimsKey: string; pointsRef: Point[] | null }>({
     layout,
     dimsKey: "",
@@ -47,12 +46,15 @@ export default function PointCloud({
   }, [points]);
 
   useEffect(() => {
-    const g = gRef.current;
-    if (!g) return;
+    const dotsG = dotsRef.current;
+    const segsG = segsRef.current;
+    if (!dotsG || !segsG) return;
 
     const geoms = computeGeometry(layout, points, dims, ext, color, revealT);
     const geomById = new Map<string, Geom>();
     points.forEach((p, i) => geomById.set(p.id, geoms[i]));
+    const cx = (i: number) => geoms[i].x + geoms[i].w / 2;
+    const cy = (i: number) => geoms[i].y + geoms[i].h / 2;
 
     const dimsKey = `${dims.width}x${dims.height}`;
     const layoutChanged = prev.current.layout !== layout;
@@ -70,13 +72,14 @@ export default function PointCloud({
 
     prev.current = { layout, dimsKey, pointsRef: points };
 
-    // --- points ---
-    const sel = d3.select(g).selectAll<SVGRectElement, unknown>("rect.pt");
+    const ease = d3.easeCubicInOut;
+    const lineDim = layout === "stripes"; // bars don't want a centerline
+
+    // --- points (rects) ---
+    const dotSel = d3.select(dotsG).selectAll<SVGRectElement, unknown>("rect.pt");
     const get = (el: SVGRectElement) => geomById.get(el.dataset.id!)!;
-    // `any` only to bridge the Selection|Transition union (shared `.attr` API).
-    const target: any =
-      dur === 0 ? sel : sel.transition().duration(dur).ease(d3.easeCubicInOut);
-    target
+    const dotTgt: any = dur === 0 ? dotSel : dotSel.transition().duration(dur).ease(ease);
+    dotTgt
       .attr("x", function (this: SVGRectElement) { return get(this).x; })
       .attr("y", function (this: SVGRectElement) { return get(this).y; })
       .attr("width", function (this: SVGRectElement) { return get(this).w; })
@@ -85,48 +88,37 @@ export default function PointCloud({
       .attr("fill", function (this: SVGRectElement) { return get(this).fill; })
       .attr("opacity", function (this: SVGRectElement) { return get(this).opacity; });
 
-    // --- connecting line through revealed point centers (same coords as points) ---
-    const path = pathRef.current;
-    if (path) {
-      const centers: [number, number][] = [];
-      for (let i = 0; i < points.length; i++) {
-        if (points[i].t <= revealT + 1e-9) {
-          const ge = geoms[i];
-          centers.push([ge.x + ge.w / 2, ge.y + ge.h / 2]);
-        }
-      }
-      const newD = d3.line()(centers) ?? "";
-      const op = layout === "stripes" ? 0 : 0.34; // bars don't want a centerline
-      const cur = path.getAttribute("d") ?? "";
-
-      // Morph the path only when the vertex count is guaranteed to match
-      // (layout change at fixed reveal/source). Otherwise snap to avoid a
-      // mismatched-vertex glitch from interpolateString.
-      if (dur > 0 && layoutChanged && cur) {
-        d3.select(path)
-          .transition()
-          .duration(dur)
-          .ease(d3.easeCubicInOut)
-          .attrTween("d", () => d3.interpolateString(cur, newD))
-          .attr("opacity", op);
-      } else {
-        d3.select(path).interrupt();
-        path.setAttribute("d", newD);
-        path.setAttribute("opacity", String(op));
-      }
-    }
+    // --- connecting segments (lines), colored by temperature ---
+    const segSel = d3.select(segsG).selectAll<SVGLineElement, unknown>("line.connector");
+    const segTgt: any = dur === 0 ? segSel : segSel.transition().duration(dur).ease(ease);
+    const idx = (el: SVGLineElement) => +el.dataset.i!;
+    segTgt
+      .attr("x1", function (this: SVGLineElement) { return cx(idx(this)); })
+      .attr("y1", function (this: SVGLineElement) { return cy(idx(this)); })
+      .attr("x2", function (this: SVGLineElement) { return cx(idx(this) + 1); })
+      .attr("y2", function (this: SVGLineElement) { return cy(idx(this) + 1); })
+      .attr("stroke", function (this: SVGLineElement) {
+        const i = idx(this);
+        return color((points[i].value + points[i + 1].value) / 2);
+      })
+      .attr("opacity", function (this: SVGLineElement) {
+        const i = idx(this);
+        const shown = points[i + 1].t <= revealT + 1e-9;
+        return lineDim || !shown ? 0 : 0.85;
+      });
   }, [layout, points, dims, ext, color, revealT]);
 
-  // Newly-mounted rects start collapsed at the center, then the effect above
-  // transitions them out to their target geometry.
-  const cx = dims.width / 2;
-  const cy = dims.height / 2;
-
+  // New elements mount collapsed at the origin (no dynamic attrs in JSX, so a
+  // resize never clobbers D3's positions), then the effect transitions them out.
   return (
     <g>
-      <path ref={pathRef} className="connect" fill="none" opacity={0} />
+      <g ref={segsRef} className="segs">
+        {points.slice(0, -1).map((p, i) => (
+          <line key={p.id} className="connector" data-i={i} opacity={0} />
+        ))}
+      </g>
       <g
-        ref={gRef}
+        ref={dotsRef}
         onMouseMove={(e) => {
           const id = (e.target as Element).getAttribute?.("data-id");
           const p = id ? byId.get(id) : null;
@@ -135,18 +127,7 @@ export default function PointCloud({
         onMouseLeave={(e) => onHover(null, e.clientX, e.clientY)}
       >
         {points.map((p) => (
-          <rect
-            key={p.id}
-            className="pt"
-            data-id={p.id}
-            x={cx}
-            y={cy}
-            width={0}
-            height={0}
-            rx={0}
-            opacity={0}
-            fill="#888"
-          />
+          <rect key={p.id} className="pt" data-id={p.id} width={0} height={0} opacity={0} fill="#888" />
         ))}
       </g>
     </g>
