@@ -7,8 +7,6 @@ interface Props {
   layout: LayoutKind;
   dims: Dims;
   ext: Extents;
-  points: Point[];
-  revealT: number;
   latest: Point | null;
 }
 
@@ -24,36 +22,20 @@ function group(active: boolean) {
   };
 }
 
-export default function Overlays({ layout, dims, ext, points, revealT, latest }: Props) {
+/**
+ * Static chrome per layout (axes, gridlines, reference rings, month + center
+ * labels). The connecting *line* lives in PointCloud so it morphs with the
+ * points; everything here just crossfades on layout change.
+ */
+export default function Overlays({ layout, dims, ext, latest }: Props) {
   const x = timeX(dims, ext);
   const { scale: y } = valueY(dims, ext);
   const yTicks = d3.ticks(ext.value[0], ext.value[1], 6);
   const xTicks = d3.ticks(ext.t[0], ext.t[1], 8).filter((d) => Number.isInteger(d));
 
-  // Connecting line for the line view, clipped to the revealed range.
-  const revealed = points.filter((p) => p.t <= revealT + 1e-9);
-  const linePath =
-    d3
-      .line<Point>()
-      .x((p) => x(p.t))
-      .y((p) => y(p.value))(revealed) ?? "";
-
   const sp = spiralFns(dims, ext);
   const ci = circleFns(dims, ext);
   const spiralRefs = [0, 0.5, 1, 1.5, 2].filter((v) => v >= ext.value[0] && v <= ext.value[1]);
-
-  // Connecting line through the revealed points in time order, drawn in each
-  // layout's own coordinates. This is what turns spokes into a spiral / rings.
-  const spiralPath =
-    d3
-      .line<Point>()
-      .x((p) => sp.cx + sp.r(p.value) * Math.cos(sp.angle(p.month)))
-      .y((p) => sp.cy + sp.r(p.value) * Math.sin(sp.angle(p.month)))(revealed) ?? "";
-  const circlePath =
-    d3
-      .line<Point>()
-      .x((p) => ci.cx + ci.r(p.year) * Math.cos(ci.angle(p.month)))
-      .y((p) => ci.cy + ci.r(p.year) * Math.sin(ci.angle(p.month)))(revealed) ?? "";
 
   return (
     <>
@@ -72,7 +54,6 @@ export default function Overlays({ layout, dims, ext, points, revealT, latest }:
             {t}
           </text>
         ))}
-        <path className="trend-line" d={linePath} />
       </motion.g>
 
       {/* ---------- STRIPES ---------- */}
@@ -86,7 +67,6 @@ export default function Overlays({ layout, dims, ext, points, revealT, latest }:
 
       {/* ---------- SPIRAL ---------- */}
       <motion.g {...group(layout === "spiral")}>
-        <path className="spiral-line" d={spiralPath} />
         {spiralRefs.map((v) => (
           <g key={`sr-${v}`}>
             <circle className="ring" cx={sp.cx} cy={sp.cy} r={sp.r(v)} />
@@ -113,7 +93,6 @@ export default function Overlays({ layout, dims, ext, points, revealT, latest }:
 
       {/* ---------- MONTHLY CIRCLE ---------- */}
       <motion.g {...group(layout === "circle")}>
-        <path className="spiral-line" d={circlePath} />
         <circle className="ring" cx={ci.cx} cy={ci.cy} r={ci.maxR} />
         <circle className="ring" cx={ci.cx} cy={ci.cy} r={ci.innerR} />
         {MONTHS.map((mlabel, i) => {

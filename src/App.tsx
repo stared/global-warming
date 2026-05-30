@@ -150,14 +150,7 @@ export default function App() {
       <div className="stage" ref={stageRef}>
         {ready && (
           <svg width={dims.width} height={dims.height} className="viz">
-            <Overlays
-              layout={layout}
-              dims={dims}
-              ext={ext}
-              points={points}
-              revealT={revealT}
-              latest={latest}
-            />
+            <Overlays layout={layout} dims={dims} ext={ext} latest={latest} />
             <PointCloud
               points={points}
               layout={layout}
