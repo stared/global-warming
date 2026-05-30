@@ -1,0 +1,30 @@
+{
+  "name": "global-warming-spiral",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Auto-updating visualizations of global temperature anomalies (spiral, line, stripes, monthly clock) with morphing transitions.",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "preview": "vite preview",
+    "data": "uv run scripts/fetch_data.py"
+  },
+  "dependencies": {
+    "d3": "^7.9.0",
+    "framer-motion": "^11.11.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@types/d3": "^7.4.3",
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "@vitejs/plugin-react": "^4.3.3",
+    "typescript": "^5.6.3",
+    "vite": "^5.4.10"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": ["esbuild"]
+  }
+}

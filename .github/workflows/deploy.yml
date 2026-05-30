@@ -1,0 +1,75 @@
+name: Refresh data & deploy
+
+on:
+  push:
+    branches: [main]
+  schedule:
+    # Weekly, Mondays 06:17 UTC. Source datasets update monthly (timing varies),
+    # so a weekly run picks up new months shortly after they are published.
+    - cron: "17 6 * * 1"
+  workflow_dispatch:
+
+# Allow the build to commit refreshed data, and to publish to Pages.
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+# Never run two deploys at once; let the latest win.
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build-deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v5
+
+      - name: Refresh climate data from sources
+        run: uv run scripts/fetch_data.py
+
+      - name: Commit refreshed data (for history)
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add public/data/climate.json
+          if git diff --staged --quiet; then
+            echo "No data changes."
+          else
+            git commit -m "data: refresh climate series [skip ci]"
+            git push
+          fi
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build
+        run: pnpm build
+
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+      - name: Deploy to GitHub Pages
+        id: deploy
+        uses: actions/deploy-pages@v4
