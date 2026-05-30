@@ -54,17 +54,6 @@ export function spiralFns(dims: Dims, ext: Extents) {
   return { cx, cy, maxR, innerR, r, angle: monthAngle, valueAt: (rr: number) => lo + ((rr - innerR) / (maxR - innerR)) * span };
 }
 
-export function circleFns(dims: Dims, ext: Extents) {
-  const cx = dims.width / 2;
-  const cy = dims.height / 2;
-  const maxR = Math.min(dims.width, dims.height) / 2 - 48;
-  const innerR = maxR * 0.12;
-  const [y0, y1] = ext.year;
-  const span = y1 - y0 || 1;
-  const r = (year: number) => innerR + ((year - y0) / span) * (maxR - innerR);
-  return { cx, cy, maxR, innerR, r, angle: monthAngle };
-}
-
 // --- The morph target: one Geom per point for a given layout ---
 
 export function computeGeometry(
@@ -108,28 +97,11 @@ export function computeGeometry(
     }));
   }
 
-  if (layout === "spiral") {
-    const { cx, cy, r, angle } = spiralFns(dims, ext);
-    return points.map((p) => {
-      const a = angle(p.month);
-      const rr = r(p.value);
-      return {
-        x: cx + rr * Math.cos(a) - DOT / 2,
-        y: cy + rr * Math.sin(a) - DOT / 2,
-        w: DOT,
-        h: DOT,
-        rx: DOT / 2,
-        fill: color(p.value),
-        opacity: vis(p),
-      };
-    });
-  }
-
-  // circle (monthly clock): angle = month, radius = year
-  const { cx, cy, r, angle } = circleFns(dims, ext);
+  // spiral: angle = month, radius = anomaly
+  const { cx, cy, r, angle } = spiralFns(dims, ext);
   return points.map((p) => {
     const a = angle(p.month);
-    const rr = r(p.year);
+    const rr = r(p.value);
     return {
       x: cx + rr * Math.cos(a) - DOT / 2,
       y: cy + rr * Math.sin(a) - DOT / 2,

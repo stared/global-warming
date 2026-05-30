@@ -1,7 +1,7 @@
 import * as d3 from "d3";
 import { motion } from "framer-motion";
 import type { Extents, LayoutKind, Point } from "../data/types";
-import { circleFns, spiralFns, timeX, valueY, type Dims, M } from "./geometry";
+import { spiralFns, timeX, valueY, type Dims, M } from "./geometry";
 
 interface Props {
   layout: LayoutKind;
@@ -34,7 +34,6 @@ export default function Overlays({ layout, dims, ext, latest }: Props) {
   const xTicks = d3.ticks(ext.t[0], ext.t[1], 8).filter((d) => Number.isInteger(d));
 
   const sp = spiralFns(dims, ext);
-  const ci = circleFns(dims, ext);
   const spiralRefs = [0, 0.5, 1, 1.5, 2].filter((v) => v >= ext.value[0] && v <= ext.value[1]);
 
   return (
@@ -89,24 +88,6 @@ export default function Overlays({ layout, dims, ext, latest }: Props) {
             {latest.year}
           </text>
         )}
-      </motion.g>
-
-      {/* ---------- MONTHLY CIRCLE ---------- */}
-      <motion.g {...group(layout === "circle")}>
-        <circle className="ring" cx={ci.cx} cy={ci.cy} r={ci.maxR} />
-        <circle className="ring" cx={ci.cx} cy={ci.cy} r={ci.innerR} />
-        {MONTHS.map((mlabel, i) => {
-          const a = ci.angle(i + 1);
-          const rr = ci.maxR + 16;
-          return (
-            <text key={`cm-${i}`} className="month-label" x={ci.cx + rr * Math.cos(a)} y={ci.cy + rr * Math.sin(a)} dy="0.32em" textAnchor="middle">
-              {mlabel}
-            </text>
-          );
-        })}
-        <text className="ring-hint" x={ci.cx} y={ci.cy} dy="0.32em" textAnchor="middle">
-          rings: {ext.year[0]}→{ext.year[1]}
-        </text>
       </motion.g>
     </>
   );

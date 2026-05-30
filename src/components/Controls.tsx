@@ -4,7 +4,6 @@ const LAYOUTS: { key: LayoutKind; label: string; hint: string }[] = [
   { key: "spiral", label: "Spiral", hint: "Radial loop per year (Ed Hawkins)" },
   { key: "line", label: "Line", hint: "Anomaly over time" },
   { key: "stripes", label: "Stripes", hint: "One colored bar per month" },
-  { key: "circle", label: "Monthly clock", hint: "Months around, years as rings" },
 ];
 
 interface Props {

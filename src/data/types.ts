@@ -21,7 +21,7 @@ export interface ClimateData {
   sources: Record<string, SourceData>;
 }
 
-export type LayoutKind = "spiral" | "line" | "stripes" | "circle";
+export type LayoutKind = "spiral" | "line" | "stripes";
 
 /** A monthly datum with a stable id and a decimal-year coordinate. */
 export interface Point extends RawPoint {

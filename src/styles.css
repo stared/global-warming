@@ -109,14 +109,6 @@ body {
   text-align: right;
 }
 
-.view-caption {
-  margin: -4px 2px 0;
-  color: var(--muted);
-  font-size: 13px;
-  line-height: 1.45;
-  max-width: 80ch;
-}
-
 /* ---------- stage / svg ---------- */
 .stage {
   position: relative;
@@ -149,7 +141,6 @@ body {
   font-weight: 800;
   font-variant-numeric: tabular-nums;
 }
-.ring-hint { fill: var(--muted); font-size: 11px; }
 
 /* ---------- footer ---------- */
 .footer-row {
