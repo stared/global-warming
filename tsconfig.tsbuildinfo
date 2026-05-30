@@ -1,1 +1,0 @@
-{"root":["./src/app.tsx","./src/main.tsx","./src/vite-env.d.ts","./src/components/controls.tsx","./src/components/legend.tsx","./src/data/types.ts","./src/viz/overlays.tsx","./src/viz/pointcloud.tsx","./src/viz/colors.ts","./src/viz/geometry.ts","./vite.config.ts"],"version":"5.9.3"}
